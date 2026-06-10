@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trabajos / Jobs - Lorant</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#1a2230; --panel2:#222d3d; --line:#2e3b4e;
+    --text:#e9eef5; --muted:#9fb0c3; --accent:#ff7a18; --accent2:#3b82f6;
+    --good:#22c55e; --warn:#f59e0b; --danger:#ef4444; --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.5;-webkit-text-size-adjust:100%}
+  header{position:sticky;top:0;z-index:20;background:rgba(15,20,25,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  header .brand{font-weight:800;font-size:1.05rem;letter-spacing:.3px}
+  header .brand span{color:var(--accent)}
+  .modes{margin-left:auto;display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);
+    padding:4px;border-radius:999px}
+  .modes button{border:0;background:transparent;color:var(--muted);padding:8px 14px;border-radius:999px;
+    font-weight:700;cursor:pointer;font-size:.85rem}
+  .modes button.active{background:var(--accent);color:#1a1207}
+  main{max-width:920px;margin:0 auto;padding:18px 14px 80px}
+  h1{font-size:1.35rem;margin:.2em 0 .1em}
+  h2{font-size:1.05rem;margin:1.4em 0 .5em;color:var(--text)}
+  .sub{color:var(--muted);font-size:.9rem;margin:0 0 1.2em}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:0 0 16px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row > *{flex:1;min-width:120px}
+  label{display:block;font-size:.78rem;color:var(--muted);font-weight:700;margin:0 0 4px;text-transform:uppercase;letter-spacing:.4px}
+  input,textarea,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    border-radius:10px;padding:11px 12px;font-size:1rem;font-family:inherit}
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--accent2);border-color:var(--accent2)}
+  textarea{resize:vertical;min-height:74px}
+  .btn{display:inline-flex;align-items:center;gap:8px;justify-content:center;border:0;border-radius:10px;
+    padding:12px 16px;font-weight:800;font-size:.95rem;cursor:pointer;text-decoration:none}
+  .btn.primary{background:var(--accent);color:#1a1207}
+  .btn.blue{background:var(--accent2);color:#fff}
+  .btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+  .btn.good{background:var(--good);color:#06210f}
+  .btn.sm{padding:8px 12px;font-size:.82rem}
+  .btn.full{width:100%}
+  .btn.danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}
+  .field{margin:0 0 12px}
+  .pill{display:inline-block;font-size:.72rem;font-weight:800;padding:3px 9px;border-radius:999px;letter-spacing:.3px}
+  .p1{background:#7f1d1d;color:#fecaca}
+  .p2{background:#854d0e;color:#fde68a}
+  .p3{background:#1e3a8a;color:#bfdbfe}
+  .p4{background:#334155;color:#cbd5e1}
+  .jobhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px}
+  .jobnum{background:var(--accent2);color:#fff;font-weight:800;width:30px;height:30px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;font-size:.9rem;flex:0 0 auto}
+  .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+  .thumbs .t{position:relative}
+  .thumbs img{height:84px;width:84px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+  .thumbs .rm{position:absolute;top:-7px;right:-7px;background:var(--danger);color:#fff;border:0;border-radius:999px;
+    width:22px;height:22px;font-weight:800;cursor:pointer;line-height:1}
+  .matrow{display:grid;grid-template-columns:46px 1fr 70px 34px;gap:8px;align-items:end;margin:0 0 8px}
+  .matrow .ref{font-size:.72rem;color:var(--good);margin-top:3px;min-height:14px}
+  .muted{color:var(--muted)}
+  .hint{font-size:.8rem;color:var(--muted);margin:6px 0 0}
+  .divider{height:1px;background:var(--line);margin:18px 0}
+  .code{width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.72rem;min-height:90px}
+  .totbar{display:flex;justify-content:space-between;align-items:center;background:var(--panel2);
+    border:1px dashed var(--line);border-radius:10px;padding:12px 14px;margin:8px 0;font-weight:700}
+  .big{font-size:1.5rem;font-weight:800;color:var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:.9rem}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.4px}
+  .qty{font-weight:800;color:var(--accent)}
+  .hidden{display:none!important}
+  .center{text-align:center}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--good);color:#06210f;
+    padding:12px 18px;border-radius:10px;font-weight:800;z-index:50;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1}
+  .empty{text-align:center;color:var(--muted);padding:30px 10px}
+  .langnote{font-size:.8rem;color:var(--muted);background:var(--panel2);border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px;margin:0 0 14px}
+  @media(max-width:520px){
+    .matrow{grid-template-columns:40px 1fr;gap:8px}
+    .matrow .qtyc{grid-column:1}.matrow .delc{grid-column:2;justify-self:end}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🔨 Trabajos <span>· Lorant</span></div>
+  <div class="modes">
+    <button id="mOwner" class="active" onclick="setMode('owner')">🏠 Owner</button>
+    <button id="mLorant" onclick="setMode('lorant')">👷 Lorant</button>
+  </div>
+</header>
+<main>
+
+<!-- ============ OWNER VIEW ============ -->
+<section id="ownerView">
+  <h1>Owner: create & send jobs</h1>
+  <p class="sub">Add each job in English with photos and a priority. Generate a code or file and send it to Lorant. He replies with the Obramat shopping list and a fixed cash price per job.</p>
+
+  <div class="card">
+    <div class="field" style="max-width:220px">
+      <label>How many jobs in total?</label>
+      <input id="jobCount" type="number" min="1" value="1" oninput="syncJobCount()">
+    </div>
+    <p class="hint">Lorant will be asked for an all-inclusive price for all jobs if there is more than one.</p>
+  </div>
+
+  <div id="jobsEditor"></div>
+
+  <button class="btn ghost full" onclick="addJob()">+ Add another job</button>
+
+  <div class="divider"></div>
+  <h2>Send to Lorant</h2>
+  <p class="hint">Photos are included automatically (compressed). The file option is best when there are photos. The code option is best for text-only.</p>
+  <div class="row" style="margin-top:10px">
+    <button class="btn primary" onclick="copyLorantLink()">🔗 Copy link for Lorant</button>
+    <button class="btn good" onclick="whatsappLorantLink()">💬 WhatsApp link</button>
+  </div>
+  <p class="hint">Best when hosted: he taps the link and the jobs open straight away on his phone. Keep photos light, very long links may not send.</p>
+  <div class="row" style="margin-top:10px">
+    <button class="btn ghost" onclick="downloadJobsFile()">⬇️ Download file</button>
+    <button class="btn ghost" onclick="generateJobsCode()">🔑 Generate code</button>
+    <a class="btn ghost" id="emailLorant" href="#" onclick="emailToLorant(event)">✉️ Email</a>
+  </div>
+  <div id="jobsCodeWrap" class="field hidden" style="margin-top:14px">
+    <label>Code for Lorant (he pastes this in his view)</label>
+    <textarea id="jobsCode" class="code" readonly></textarea>
+    <button class="btn ghost sm" style="margin-top:8px" onclick="copy('jobsCode')">📋 Copy code</button>
+  </div>
+
+  <div class="divider"></div>
+  <h2>Lorant's reply</h2>
+  <p class="hint">When Lorant sends back his file or code, load it here to see the shopping list and prices.</p>
+  <div class="row" style="margin-top:10px">
+    <label class="btn ghost" style="cursor:pointer">📂 Load reply file<input type="file" accept=".json,.lorant" class="hidden" onchange="loadReplyFile(event)"></label>
+    <button class="btn ghost" onclick="toggle('pasteReplyWrap')">📋 Paste reply code</button>
+  </div>
+  <div id="pasteReplyWrap" class="field hidden" style="margin-top:12px">
+    <label>Paste Lorant's reply code</label>
+    <textarea id="replyCode" class="code"></textarea>
+    <button class="btn blue sm" style="margin-top:8px" onclick="loadReplyCode()">Load reply</button>
+  </div>
+  <div id="replyView"></div>
+</section>
+
+<!-- ============ LORANT VIEW ============ -->
+<section id="lorantView" class="hidden">
+  <h1>Trabajos para presupuestar</h1>
+  <p class="sub">Hola Lorant. Aquí están los trabajos de Rory. Para cada trabajo, añade los materiales de Obramat (pega el enlace y el código Ref se rellena solo), pon un precio fijo en efectivo y dime cuánto tiempo necesitas. Al final, puedes dar un precio total por todos los trabajos juntos.</p>
+
+  <div id="lorantLoader" class="card">
+    <label>Pega aquí el código de los trabajos</label>
+    <textarea id="loadCode" class="code" placeholder="Pega el código que te envió Rory..."></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary" onclick="loadJobsCode()">Cargar trabajos</button>
+      <label class="btn ghost" style="cursor:pointer">📂 Cargar archivo<input type="file" accept=".json,.lorant" class="hidden" onchange="loadJobsFile(event)"></label>
+    </div>
+  </div>
+
+  <div id="lorantJobs"></div>
+
+  <div id="lorantSubmit" class="hidden">
+    <div class="card" id="allInWrap">
+      <label>Precio total por TODOS los trabajos juntos (opcional)</label>
+      <div class="row">
+        <div class="field" style="margin:0">
+          <input id="allInPrice" type="number" min="0" placeholder="€ precio total con descuento" oninput="saveLorant()">
+        </div>
+        <div class="field" style="margin:0">
+          <input id="allInTime" type="text" placeholder="tiempo total (ej. 3 días)" oninput="saveLorant()">
+        </div>
+      </div>
+      <p class="hint">Si Rory te encarga todos los trabajos a la vez, este es tu mejor precio total.</p>
+    </div>
+
+    <div class="card">
+      <label>Notas para Rory (opcional)</label>
+      <textarea id="lorantNotes" placeholder="Disponibilidad, comentarios..." oninput="saveLorant()"></textarea>
+    </div>
+
+    <h2>Enviar respuesta a Rory</h2>
+    <div class="row" style="margin-top:6px">
+      <button class="btn primary" onclick="downloadReplyFile()">⬇️ Descargar respuesta</button>
+      <button class="btn blue" onclick="generateReplyCode()">🔑 Generar código</button>
+      <a class="btn good" id="emailRory" href="#" onclick="emailToRory(event)">✉️ Email a Rory</a>
+    </div>
+    <div id="replyCodeWrap" class="field hidden" style="margin-top:14px">
+      <label>Código para Rory (cópialo y envíaselo)</label>
+      <textarea id="replyCodeOut" class="code" readonly></textarea>
+      <button class="btn ghost sm" style="margin-top:8px" onclick="copy('replyCodeOut')">📋 Copiar código</button>
+    </div>
+  </div>
+</section>
+
+</main>
+<div id="toast" class="toast"></div>
+
+<script>
+/* ---------- config ---------- */
+const OWNER_EMAIL  = "nolanrory75@gmail.com";
+const LORANT_EMAIL = "Lorantbenda2@gmail.com";
+const PRIORITY_LABELS = {1:"Top priority",2:"2nd",3:"3rd",4:"4th",5:"5th",6:"Low"};
+const PRIORITY_ES = {1:"Máxima prioridad",2:"2ª",3:"3ª",4:"4ª",5:"5ª",6:"Baja"};
+
+/* ---------- state ---------- */
+let jobs = [];            // owner side: [{id,title,desc,descEs,priority,photos:[dataURL]}]
+let loadedJobs = null;    // lorant side: the jobs he received
+let lorantData = {};      // lorant side: { [jobId]: {materials:[{name,url,ref,qty}], price, time, notes}, _all:{price,time}, _notes }
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const uid = () => Math.random().toString(36).slice(2,9);
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800);}
+function toggle(id){$(id).classList.toggle("hidden");}
+function copy(id){const el=$(id);el.select();el.setSelectionRange(0,99999);
+  navigator.clipboard.writeText(el.value).then(()=>toast("Copied"),()=>{document.execCommand("copy");toast("Copied");});}
+function encode(obj){return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));}
+function decode(str){return JSON.parse(decodeURIComponent(escape(atob(str.trim()))));}
+function refFromUrl(url){
+  if(!url) return "";
+  let m = url.match(/(\d{5,})\.html/i);
+  if(m) return m[1];
+  let all = url.match(/\d{5,}/g);
+  return all ? all[all.length-1] : "";
+}
+function download(name, obj){
+  const blob = new Blob([JSON.stringify(obj)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- mode ---------- */
+function setMode(m){
+  $("ownerView").classList.toggle("hidden", m!=="owner");
+  $("lorantView").classList.toggle("hidden", m!=="lorant");
+  $("mOwner").classList.toggle("active", m==="owner");
+  $("mLorant").classList.toggle("active", m==="lorant");
+  lsSet("lorant_mode", m);
+}
+
+/* ================= OWNER ================= */
+function newJob(){return {id:uid(), title:"", desc:"", descEs:"", priority:1, photos:[]};}
+
+function syncJobCount(){
+  const n = Math.max(1, parseInt($("jobCount").value)||1);
+  while(jobs.length < n) jobs.push(newJob());
+  while(jobs.length > n) jobs.pop();
+  renderJobsEditor(); saveOwner();
+}
+function addJob(){ jobs.push(newJob()); $("jobCount").value = jobs.length; renderJobsEditor(); saveOwner(); }
+function removeJob(id){ jobs = jobs.filter(j=>j.id!==id); $("jobCount").value = Math.max(1,jobs.length);
+  if(jobs.length===0) jobs.push(newJob()); renderJobsEditor(); saveOwner(); }
+
+function updJob(id, key, val){ const j=jobs.find(x=>x.id===id); if(j){ j[key]=val; saveOwner(); if(key==="priority") {} } }
+
+async function addPhotos(id, files){
+  const j = jobs.find(x=>x.id===id); if(!j) return;
+  for(const f of files){
+    const data = await compressImage(f);
+    j.photos.push(data);
+  }
+  renderJobsEditor(); saveOwner();
+}
+function compressImage(file){
+  return new Promise(res=>{
+    const r = new FileReader();
+    r.onload = e=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const max=1100; let {width:w,height:h}=img;
+        if(w>h && w>max){h=h*max/w;w=max;} else if(h>max){w=w*max/h;h=max;}
+        const c=document.createElement("canvas");c.width=w;c.height=h;
+        c.getContext("2d").drawImage(img,0,0,w,h);
+        res(c.toDataURL("image/jpeg",0.6));
+      };
+      img.src = e.target.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+function removePhoto(id, idx){ const j=jobs.find(x=>x.id===id); if(j){ j.photos.splice(idx,1); renderJobsEditor(); saveOwner(); } }
+
+function renderJobsEditor(){
+  const wrap = $("jobsEditor"); wrap.innerHTML = "";
+  jobs.forEach((j,i)=>{
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      <div class="jobhead">
+        <div class="jobnum">${i+1}</div>
+        <strong>Job ${i+1}</strong>
+        <button class="btn danger sm" style="margin-left:auto" onclick="removeJob('${j.id}')">Remove</button>
+      </div>
+      <div class="field">
+        <label>Job title (English)</label>
+        <input value="${esc(j.title)}" oninput="updJob('${j.id}','title',this.value)" placeholder="e.g. Repair garden wall">
+      </div>
+      <div class="field">
+        <label>Description (English) - what you want done</label>
+        <textarea oninput="updJob('${j.id}','desc',this.value)" placeholder="Describe the job...">${esc(j.desc)}</textarea>
+      </div>
+      <div class="field">
+        <label>Spanish version for Lorant <span class="muted">(ask Claude to translate, or type it)</span></label>
+        <textarea oninput="updJob('${j.id}','descEs',this.value)" placeholder="Descripción en español...">${esc(j.descEs)}</textarea>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Priority</label>
+          <select onchange="updJob('${j.id}','priority',parseInt(this.value))">
+            ${[1,2,3,4,5,6].map(p=>`<option value="${p}" ${j.priority===p?"selected":""}>${p} - ${PRIORITY_LABELS[p]}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <label>Photos</label>
+          <label class="btn ghost sm" style="cursor:pointer">📷 Add photos<input type="file" accept="image/*" multiple class="hidden" onchange="addPhotos('${j.id}',this.files)"></label>
+        </div>
+      </div>
+      <div class="thumbs">${j.photos.map((p,idx)=>`<div class="t"><img src="${p}"><button class="rm" onclick="removePhoto('${j.id}',${idx})">×</button></div>`).join("")}</div>
+    `;
+    wrap.appendChild(div);
+  });
+}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+function packJobs(){
+  return {
+    v:1, type:"jobs", from:"Rory", created:new Date().toISOString(),
+    count: jobs.length,
+    jobs: jobs.map((j,i)=>({id:j.id, n:i+1, title:j.title, desc:j.desc, descEs:j.descEs, priority:j.priority, photos:j.photos}))
+  };
+}
+function generateJobsCode(){
+  if(!validJobs()) return;
+  $("jobsCode").value = encode(packJobs());
+  $("jobsCodeWrap").classList.remove("hidden");
+  toast("Code ready");
+}
+function downloadJobsFile(){
+  if(!validJobs()) return;
+  download("trabajos-lorant.json", packJobs());
+  toast("File downloaded");
+}
+function validJobs(){
+  if(jobs.every(j=>!j.title && !j.desc)){ toast("Add a job first"); return false; }
+  return true;
+}
+function makeLorantLink(){
+  if(!validJobs()) return null;
+  const base = (location.protocol==="file:")
+    ? "https://YOUR-SITE/index.html"   // replace once hosted
+    : location.origin + location.pathname;
+  const url = base + "#jobs=" + encode(packJobs());
+  if(url.length > 60000) toast("Link is very long, use the file option for photo-heavy jobs");
+  return url;
+}
+function copyLorantLink(){
+  const url = makeLorantLink(); if(!url) return;
+  navigator.clipboard.writeText(url).then(()=>toast("Link copied"),()=>toast("Copy failed, use the code option"));
+}
+function whatsappLorantLink(){
+  const url = makeLorantLink(); if(!url) return;
+  const msg = "Hola Lorant, aquí están los trabajos. Abre este enlace en el móvil:\n" + url;
+  window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+}
+function emailToLorant(e){
+  e.preventDefault();
+  if(!validJobs()) return;
+  const body = jobs.map((j,i)=>`Trabajo ${i+1}: ${j.title}\n${j.descEs||j.desc}`).join("\n\n")
+    + "\n\n--- Abre el archivo o pega el código en la herramienta ---\n\n" + encode(packJobs());
+  window.location.href = `mailto:${LORANT_EMAIL}?subject=${encodeURIComponent("Trabajos para presupuestar")}&body=${encodeURIComponent(body)}`;
+}
+
+/* ---- owner: view Lorant's reply ---- */
+function loadReplyFile(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=()=>{ try{ renderReply(JSON.parse(r.result)); }catch(x){ toast("Invalid file"); } }; r.readAsText(f);
+}
+function loadReplyCode(){
+  try{ renderReply(decode($("replyCode").value)); }catch(x){ toast("Invalid code"); }
+}
+function renderReply(data){
+  if(!data || data.type!=="reply"){ toast("Not a reply file"); return; }
+  const v = $("replyView"); v.innerHTML = "";
+  const ordered = [...data.jobs].sort((a,b)=>a.priority-b.priority);
+  let grand = 0;
+  ordered.forEach(j=>{
+    const d = data.data[j.id] || {};
+    const mats = d.materials || [];
+    const price = parseFloat(d.price)||0; grand += price;
+    const card = document.createElement("div");
+    card.className="card";
+    card.innerHTML = `
+      <div class="jobhead">
+        <div class="jobnum">${j.n}</div>
+        <strong>${esc(j.title)||"Job "+j.n}</strong>
+        <span class="pill p${j.priority}">${PRIORITY_LABELS[j.priority]||"Priority "+j.priority}</span>
+      </div>
+      ${mats.length?`<table><thead><tr><th>Qty</th><th>Material</th><th>Ref</th><th>Link</th></tr></thead>
+        <tbody>${mats.map(m=>`<tr>
+          <td class="qty">${esc(m.qty)||1}×</td>
+          <td>${esc(m.name)}</td>
+          <td>${esc(m.ref)||"-"}</td>
+          <td>${m.url?`<a class="btn blue sm" href="${esc(m.url)}" target="_blank">Obramat ↗</a>`:"-"}</td>
+        </tr>`).join("")}</tbody></table>`:`<p class="muted">No materials listed.</p>`}
+      <div class="totbar"><span>Fixed cash price</span><span class="big">${price?("€"+price):"-"}</span></div>
+      ${d.time?`<p class="hint">⏱ Estimated time: <strong>${esc(d.time)}</strong></p>`:""}
+      ${d.notes?`<p class="hint">📝 ${esc(d.notes)}</p>`:""}
+    `;
+    v.appendChild(card);
+  });
+  // summary
+  const all = data.all || {};
+  const summary = document.createElement("div");
+  summary.className="card";
+  summary.style.borderColor = "var(--accent)";
+  summary.innerHTML = `
+    <h2 style="margin-top:0">Summary</h2>
+    <div class="totbar"><span>Sum of individual job prices</span><span class="big">€${grand}</span></div>
+    ${all.price?`<div class="totbar" style="border-color:var(--good)"><span>All-inclusive price (all jobs)</span><span class="big" style="color:var(--good)">€${esc(all.price)}</span></div>`:""}
+    ${all.time?`<p class="hint">⏱ Total time for all jobs: <strong>${esc(all.time)}</strong></p>`:""}
+    ${data.notes?`<p class="hint">📝 From Lorant: ${esc(data.notes)}</p>`:""}
+    <button class="btn blue full" style="margin-top:10px" onclick="openAllLinks()">🛒 Open all Obramat links</button>
+  `;
+  v.appendChild(summary);
+  // stash links for opening
+  window._allLinks = [];
+  ordered.forEach(j=>{(data.data[j.id]?.materials||[]).forEach(m=>{if(m.url) window._allLinks.push(m.url);});});
+  toast("Reply loaded");
+  if(v.scrollIntoView) v.scrollIntoView({behavior:"smooth"});
+}
+function openAllLinks(){
+  (window._allLinks||[]).forEach(u=>window.open(u,"_blank"));
+}
+
+/* ---------- owner persistence ---------- */
+function saveOwner(){
+  lsSet("lorant_jobs", JSON.stringify(jobs));
+}
+function loadOwner(){
+  try{ const s=lsGet("lorant_jobs"); if(s){jobs=JSON.parse(s);} }catch(e){}
+  if(!jobs.length) jobs=[newJob()];
+  $("jobCount").value = jobs.length;
+  renderJobsEditor();
+}
+
+/* ================= LORANT ================= */
+function loadJobsCode(){
+  try{ initLorant(decode($("loadCode").value)); }catch(x){ toast("Código no válido"); }
+}
+function loadJobsFile(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=()=>{ try{ initLorant(JSON.parse(r.result)); }catch(x){ toast("Archivo no válido"); } }; r.readAsText(f);
+}
+function initLorant(data){
+  if(!data || data.type!=="jobs"){ toast("No es un archivo de trabajos"); return; }
+  loadedJobs = data;
+  // restore any saved progress for this set
+  try{ const s=lsGet("lorant_reply_"+jobsKey(data)); if(s) lorantData=JSON.parse(s); else lorantData={}; }catch(e){ lorantData={}; }
+  $("lorantLoader").classList.add("hidden");
+  $("lorantSubmit").classList.remove("hidden");
+  $("allInWrap").classList.toggle("hidden", data.jobs.length<2);
+  renderLorantJobs();
+  toast("Trabajos cargados");
+}
+function jobsKey(data){ return (data.jobs||[]).map(j=>j.id).join("_"); }
+
+function renderLorantJobs(){
+  const wrap = $("lorantJobs"); wrap.innerHTML = "";
+  const ordered = [...loadedJobs.jobs].sort((a,b)=>a.priority-b.priority);
+  ordered.forEach(j=>{
+    if(!lorantData[j.id]) lorantData[j.id] = {materials:[{name:"",url:"",ref:"",qty:1}], price:"", time:"", notes:""};
+    const d = lorantData[j.id];
+    const card = document.createElement("div");
+    card.className="card";
+    card.innerHTML = `
+      <div class="jobhead">
+        <div class="jobnum">${j.n}</div>
+        <strong>${esc(j.title)||"Trabajo "+j.n}</strong>
+        <span class="pill p${j.priority}">${PRIORITY_ES[j.priority]||"Prioridad "+j.priority}</span>
+      </div>
+      <p style="white-space:pre-wrap;margin:.2em 0 .6em">${esc(j.descEs||j.desc)}</p>
+      ${j.photos&&j.photos.length?`<div class="thumbs">${j.photos.map(p=>`<a href="${p}" target="_blank"><img src="${p}"></a>`).join("")}</div>`:""}
+      <div class="divider"></div>
+      <label>Materiales de Obramat</label>
+      <div id="mats_${j.id}"></div>
+      <button class="btn ghost sm" onclick="addMat('${j.id}')">+ Añadir material</button>
+      <div class="row" style="margin-top:14px">
+        <div class="field" style="margin:0">
+          <label>Precio fijo en efectivo (€)</label>
+          <input type="number" min="0" value="${esc(d.price)}" oninput="setJobField('${j.id}','price',this.value)" placeholder="€">
+        </div>
+        <div class="field" style="margin:0">
+          <label>Tiempo estimado</label>
+          <input type="text" value="${esc(d.time)}" oninput="setJobField('${j.id}','time',this.value)" placeholder="ej. 2 horas, 1 día">
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label>Notas del trabajo (opcional)</label>
+        <input type="text" value="${esc(d.notes)}" oninput="setJobField('${j.id}','notes',this.value)" placeholder="...">
+      </div>
+    `;
+    wrap.appendChild(card);
+    renderMats(j.id);
+  });
+}
+function renderMats(jobId){
+  const d = lorantData[jobId];
+  const box = $("mats_"+jobId); if(!box) return;
+  box.innerHTML = d.materials.map((m,idx)=>`
+    <div style="background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;margin:0 0 8px">
+      <div class="field" style="margin:0 0 8px">
+        <label>Material</label>
+        <input value="${esc(m.name)}" oninput="setMat('${jobId}',${idx},'name',this.value)" placeholder="ej. Cemento gris">
+      </div>
+      <div class="field" style="margin:0 0 6px">
+        <label>Enlace de Obramat</label>
+        <input value="${esc(m.url)}" oninput="setMat('${jobId}',${idx},'url',this.value)" placeholder="https://www.obramat.es/productos/...">
+        <div class="ref" id="ref_${jobId}_${idx}">${m.ref?("Ref: "+m.ref):""}</div>
+      </div>
+      <div class="row" style="align-items:end">
+        <div class="field" style="margin:0;max-width:110px">
+          <label>Cantidad</label>
+          <input type="number" min="1" value="${esc(m.qty)||1}" oninput="setMat('${jobId}',${idx},'qty',this.value)">
+        </div>
+        <div style="flex:0 0 auto">
+          <button class="btn danger sm" onclick="delMat('${jobId}',${idx})">Quitar</button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+function addMat(jobId){ lorantData[jobId].materials.push({name:"",url:"",ref:"",qty:1}); renderMats(jobId); saveLorant(); }
+function delMat(jobId, idx){ lorantData[jobId].materials.splice(idx,1); if(!lorantData[jobId].materials.length) lorantData[jobId].materials.push({name:"",url:"",ref:"",qty:1}); renderMats(jobId); saveLorant(); }
+function setMat(jobId, idx, key, val){
+  const m = lorantData[jobId].materials[idx]; m[key]=val;
+  if(key==="url"){ m.ref = refFromUrl(val); const r=$("ref_"+jobId+"_"+idx); if(r) r.textContent = m.ref?("Ref: "+m.ref):""; }
+  saveLorant();
+}
+function setJobField(jobId, key, val){ lorantData[jobId][key]=val; saveLorant(); }
+
+function saveLorant(){
+  lorantData._all = {price:$("allInPrice")?.value||"", time:$("allInTime")?.value||""};
+  lorantData._notes = $("lorantNotes")?.value||"";
+  if(loadedJobs) lsSet("lorant_reply_"+jobsKey(loadedJobs), JSON.stringify(lorantData));
+}
+function packReply(){
+  saveLorant();
+  return {
+    v:1, type:"reply", from:"Lorant", created:new Date().toISOString(),
+    jobs: loadedJobs.jobs.map(j=>({id:j.id,n:j.n,title:j.title,priority:j.priority})),
+    data: Object.fromEntries(loadedJobs.jobs.map(j=>[j.id, lorantData[j.id]||{}])),
+    all: lorantData._all||{},
+    notes: lorantData._notes||""
+  };
+}
+function generateReplyCode(){ $("replyCodeOut").value = encode(packReply()); $("replyCodeWrap").classList.remove("hidden"); toast("Código listo"); }
+function downloadReplyFile(){ download("respuesta-lorant.json", packReply()); toast("Archivo descargado"); }
+function emailToRory(e){
+  e.preventDefault();
+  const rep = packReply();
+  let body = "Lista de compra y precios:\n\n";
+  rep.jobs.sort((a,b)=>a.priority-b.priority).forEach(j=>{
+    const d = rep.data[j.id]||{};
+    body += `TRABAJO ${j.n}: ${j.title}\n`;
+    (d.materials||[]).forEach(m=>{ if(m.name||m.url) body += `  ${m.qty||1} x ${m.name} | Ref ${m.ref||"-"} | ${m.url||""}\n`; });
+    if(d.price) body += `  Precio fijo: €${d.price}\n`;
+    if(d.time) body += `  Tiempo: ${d.time}\n`;
+    body += "\n";
+  });
+  if(rep.all.price) body += `PRECIO TOTAL POR TODOS LOS TRABAJOS: €${rep.all.price}\n`;
+  if(rep.all.time) body += `Tiempo total: ${rep.all.time}\n`;
+  body += "\n--- Código (cárgalo en la herramienta) ---\n\n" + encode(rep);
+  window.location.href = `mailto:${OWNER_EMAIL}?subject=${encodeURIComponent("Respuesta de Lorant - lista de compra y precio")}&body=${encodeURIComponent(body)}`;
+}
+
+/* ---------- boot ---------- */
+loadOwner();
+// auto-load jobs from URL hash if present (#jobs=CODE)
+(function(){
+  const h = location.hash;
+  if(h.startsWith("#jobs=")){ try{ setMode("lorant"); initLorant(decode(h.slice(6))); }catch(e){} }
+  else { setMode(lsGet("lorant_mode")||"owner"); }
+})();
+</script>
+</body>
+</html>
