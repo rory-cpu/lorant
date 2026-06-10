@@ -76,6 +76,10 @@
     padding:12px 18px;border-radius:10px;font-weight:800;z-index:50;opacity:0;transition:.25s;pointer-events:none}
   .toast.show{opacity:1}
   .empty{text-align:center;color:var(--muted);padding:30px 10px}
+  .decbox{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
+  .statusline{font-weight:800;margin:6px 0}
+  .s-approved{color:var(--good)} .s-declined{color:var(--danger)} .s-counter{color:var(--warn)}
+  .btn.sel{outline:3px solid #fff3;filter:brightness(1.1)}
   .langnote{font-size:.8rem;color:var(--muted);background:var(--panel2);border:1px solid var(--line);
     border-radius:10px;padding:10px 12px;margin:0 0 14px}
   @media(max-width:520px){
@@ -197,6 +201,30 @@
   </div>
 </section>
 
+<!-- ============ LORANT: RORY'S DECISION ============ -->
+<section id="lorantDecisionView" class="hidden">
+  <h1>Respuesta de Rory</h1>
+  <p class="sub">Rory ha revisado tu presupuesto. Para los trabajos donde te hace una contraoferta, puedes aceptar su precio o proponer otro. Luego envíale tu respuesta.</p>
+  <div id="decisionJobs"></div>
+  <div class="card">
+    <label>Notas para Rory (opcional)</label>
+    <textarea id="decNotes" placeholder="Comentarios..." oninput="saveDecisionResp()"></textarea>
+  </div>
+  <h2>Enviar a Rory</h2>
+  <button class="btn primary full" onclick="submitDecisionResp(this)">📨 Enviar a Rory</button>
+  <p class="hint">Rory recibirá tu respuesta por email al instante.</p>
+  <p class="hint">¿Sin conexión? Usa una de estas opciones:</p>
+  <div class="row" style="margin-top:4px">
+    <button class="btn ghost" onclick="generateDecRespCode()">🔑 Código</button>
+    <a class="btn ghost" href="#" onclick="emailDecisionResp(event)">✉️ Email</a>
+  </div>
+  <div id="decRespCodeWrap" class="field hidden" style="margin-top:14px">
+    <label>Código para Rory</label>
+    <textarea id="decRespCodeOut" class="code" readonly></textarea>
+    <button class="btn ghost sm" style="margin-top:8px" onclick="copy('decRespCodeOut')">📋 Copiar código</button>
+  </div>
+</section>
+
 </main>
 <div id="toast" class="toast"></div>
 
@@ -244,9 +272,11 @@ function download(name, obj){
 function setMode(m){
   $("ownerView").classList.toggle("hidden", m!=="owner");
   $("lorantView").classList.toggle("hidden", m!=="lorant");
+  // hide the decision view unless it is being shown explicitly by initDecision
+  if(m!=="decision") $("lorantDecisionView").classList.add("hidden");
   $("mOwner").classList.toggle("active", m==="owner");
-  $("mLorant").classList.toggle("active", m==="lorant");
-  lsSet("lorant_mode", m);
+  $("mLorant").classList.toggle("active", m!=="owner");
+  if(m!=="decision") lsSet("lorant_mode", m);
 }
 
 /* ================= OWNER ================= */
@@ -389,8 +419,14 @@ function loadReplyFile(e){
 function loadReplyCode(){
   try{ renderReply(decode($("replyCode").value)); }catch(x){ toast("Invalid code"); }
 }
+let lastReply = null;       // owner: Lorant's quote being reviewed
+let decisions = {};         // owner: { [jobId]: {status, counter, note} }
+
 function renderReply(data){
-  if(!data || data.type!=="reply"){ toast("Not a reply file"); return; }
+  if(!data || (data.type!=="reply" && data.type!=="decision-response")){ toast("Not a reply file"); return; }
+  if(data.type==="decision-response"){ return renderDecisionResponse(data); }
+  lastReply = data;
+  try{ const s=lsGet("lorant_decisions_"+(data.jobs||[]).map(j=>j.id).join("_")); decisions = s?JSON.parse(s):{}; }catch(e){ decisions={}; }
   const v = $("replyView"); v.innerHTML = "";
   const ordered = [...data.jobs].sort((a,b)=>a.priority-b.priority);
   let grand = 0;
@@ -416,6 +452,25 @@ function renderReply(data){
       <div class="totbar"><span>Fixed cash price</span><span class="big">${price?("€"+price):"-"}</span></div>
       ${d.time?`<p class="hint">⏱ Estimated time: <strong>${esc(d.time)}</strong></p>`:""}
       ${d.notes?`<p class="hint">📝 ${esc(d.notes)}</p>`:""}
+      <div class="decbox">
+        <label>Your decision</label>
+        <div class="row">
+          <button class="btn good sm" id="dec_${j.id}_approved" onclick="setDecision('${j.id}','approved')">✅ Approve</button>
+          <button class="btn danger sm" id="dec_${j.id}_declined" onclick="setDecision('${j.id}','declined')">❌ Decline</button>
+          <button class="btn ghost sm" id="dec_${j.id}_counter" onclick="setDecision('${j.id}','counter')">💬 Counter-offer</button>
+        </div>
+        <div id="counter_${j.id}" class="hidden" style="margin-top:8px">
+          <div class="row">
+            <div class="field" style="margin:0;max-width:160px">
+              <input type="number" min="0" placeholder="Your offer €" oninput="setCounterPrice('${j.id}',this.value)">
+            </div>
+          </div>
+          <div class="field" style="margin:8px 0 0">
+            <textarea oninput="setCounterNote('${j.id}',this.value)">The price is too much for the labor. Can you do it for this?</textarea>
+          </div>
+        </div>
+        <div class="statusline" id="dstatus_${j.id}"></div>
+      </div>
     `;
     v.appendChild(card);
   });
@@ -431,16 +486,87 @@ function renderReply(data){
     ${all.time?`<p class="hint">⏱ Total time for all jobs: <strong>${esc(all.time)}</strong></p>`:""}
     ${data.notes?`<p class="hint">📝 From Lorant: ${esc(data.notes)}</p>`:""}
     <button class="btn blue full" style="margin-top:10px" onclick="openAllLinks()">🛒 Open all Obramat links</button>
+    <div class="divider"></div>
+    <h2 style="margin-top:0">Send your decision to Lorant</h2>
+    <p class="hint">Approve, decline or counter each job above, then send it back to him.</p>
+    <div class="row" style="margin-top:8px">
+      <button class="btn primary" onclick="whatsappDecision()">💬 WhatsApp decision</button>
+      <a class="btn good" href="#" onclick="emailDecision(event)">✉️ Email Lorant</a>
+      <button class="btn ghost" onclick="generateDecisionCode()">🔑 Code</button>
+    </div>
+    <div id="decisionCodeWrap" class="field hidden" style="margin-top:12px">
+      <label>Decision code for Lorant</label>
+      <textarea id="decisionCode" class="code" readonly></textarea>
+      <button class="btn ghost sm" style="margin-top:8px" onclick="copy('decisionCode')">📋 Copy</button>
+    </div>
   `;
   v.appendChild(summary);
   // stash links for opening
   window._allLinks = [];
   ordered.forEach(j=>{(data.data[j.id]?.materials||[]).forEach(m=>{if(m.url) window._allLinks.push(m.url);});});
+  // restore any saved decisions
+  Object.keys(decisions).forEach(id=>applyDecisionUI(id));
   toast("Reply loaded");
   if(v.scrollIntoView) v.scrollIntoView({behavior:"smooth"});
 }
 function openAllLinks(){
   (window._allLinks||[]).forEach(u=>window.open(u,"_blank"));
+}
+
+/* ---- owner: decisions ---- */
+function saveDecisions(){
+  if(lastReply) lsSet("lorant_decisions_"+(lastReply.jobs||[]).map(j=>j.id).join("_"), JSON.stringify(decisions));
+}
+function setDecision(jobId, status){
+  decisions[jobId] = decisions[jobId] || {};
+  decisions[jobId].status = status;
+  applyDecisionUI(jobId); saveDecisions();
+}
+function setCounterPrice(jobId, val){ decisions[jobId]=decisions[jobId]||{}; decisions[jobId].counter=val; applyDecisionUI(jobId); saveDecisions(); }
+function setCounterNote(jobId, val){ decisions[jobId]=decisions[jobId]||{}; decisions[jobId].note=val; saveDecisions(); }
+function applyDecisionUI(jobId){
+  const d = decisions[jobId]||{};
+  ["approved","declined","counter"].forEach(s=>{ const b=$("dec_"+jobId+"_"+s); if(b) b.classList.toggle("sel", d.status===s); });
+  const cbox = $("counter_"+jobId); if(cbox) cbox.classList.toggle("hidden", d.status!=="counter");
+  const sl = $("dstatus_"+jobId); if(!sl) return;
+  if(d.status==="approved"){ sl.className="statusline s-approved"; sl.textContent="✅ Approved"; }
+  else if(d.status==="declined"){ sl.className="statusline s-declined"; sl.textContent="❌ Declined"; }
+  else if(d.status==="counter"){ sl.className="statusline s-counter"; sl.textContent="💬 Counter: €"+(d.counter||"?"); }
+  else { sl.className="statusline"; sl.textContent=""; }
+}
+function packDecision(){
+  saveDecisions();
+  return {
+    v:1, type:"decision", from:"Rory", created:new Date().toISOString(),
+    jobs: lastReply.jobs, data: lastReply.data, all: lastReply.all||{},
+    decisions: decisions
+  };
+}
+function makeDecisionLink(){
+  const base = (location.protocol==="file:") ? "https://YOUR-SITE/index.html" : location.origin + location.pathname;
+  return base + "#decision=" + encode(packDecision());
+}
+function whatsappDecision(){
+  const url = makeDecisionLink();
+  const msg = "Hola Lorant, aquí está mi respuesta a tu presupuesto. Ábrela en el móvil:\n" + url;
+  window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+}
+function generateDecisionCode(){ $("decisionCode").value = encode(packDecision()); $("decisionCodeWrap").classList.remove("hidden"); toast("Code ready"); }
+function emailDecision(e){
+  e.preventDefault();
+  const dec = packDecision();
+  let body = "Hola Lorant,\n\nMi respuesta a tu presupuesto:\n\n";
+  [...dec.jobs].sort((a,b)=>a.priority-b.priority).forEach(j=>{
+    const de = dec.decisions[j.id]||{}; const orig = (dec.data[j.id]||{}).price;
+    body += `TRABAJO ${j.n}: ${j.title}\n`;
+    if(de.status==="approved") body += `  ACEPTADO al precio de €${orig}\n`;
+    else if(de.status==="declined") body += `  RECHAZADO (no hace falta este trabajo)\n`;
+    else if(de.status==="counter") body += `  CONTRAOFERTA: te ofrezco €${de.counter||"?"} (tu precio era €${orig})\n  ${de.note||""}\n`;
+    else body += `  (sin decisión todavía)\n`;
+    body += "\n";
+  });
+  body += "Abre el enlace o pega el código en la herramienta para responder.\n\n" + encode(dec);
+  window.location.href = `mailto:${LORANT_EMAIL}?subject=${encodeURIComponent("Respuesta a tu presupuesto")}&body=${encodeURIComponent(body)}`;
 }
 
 /* ---------- owner persistence ---------- */
@@ -567,19 +693,19 @@ function packReply(){
 function generateReplyCode(){ $("replyCodeOut").value = encode(packReply()); $("replyCodeWrap").classList.remove("hidden"); toast("Código listo"); }
 function downloadReplyFile(){ download("respuesta-lorant.json", packReply()); toast("Archivo descargado"); }
 function buildReplyText(rep){
-  let body = "Lista de compra y precios:\n\n";
+  let body = "Shopping list and prices from Lorant:\n\n";
   [...rep.jobs].sort((a,b)=>a.priority-b.priority).forEach(j=>{
     const d = rep.data[j.id]||{};
-    body += `TRABAJO ${j.n}: ${j.title}\n`;
+    body += `JOB ${j.n}: ${j.title}\n`;
     (d.materials||[]).forEach(m=>{ if(m.name||m.url) body += `  ${m.qty||1} x ${m.name} | Ref ${m.ref||"-"} | ${m.url||""}\n`; });
-    if(d.price) body += `  Precio fijo: €${d.price}\n`;
-    if(d.time) body += `  Tiempo: ${d.time}\n`;
+    if(d.price) body += `  Fixed price: €${d.price}\n`;
+    if(d.time) body += `  Estimated time: ${d.time}\n`;
     body += "\n";
   });
-  if(rep.all && rep.all.price) body += `PRECIO TOTAL POR TODOS LOS TRABAJOS: €${rep.all.price}\n`;
-  if(rep.all && rep.all.time) body += `Tiempo total: ${rep.all.time}\n`;
-  if(rep.notes) body += `Notas: ${rep.notes}\n`;
-  body += "\n--- Código (cárgalo en la herramienta) ---\n\n" + encode(rep);
+  if(rep.all && rep.all.price) body += `ALL-INCLUSIVE PRICE FOR ALL JOBS: €${rep.all.price}\n`;
+  if(rep.all && rep.all.time) body += `Total time for all jobs: ${rep.all.time}\n`;
+  if(rep.notes) body += `Notes from Lorant: ${rep.notes}\n`;
+  body += "\n--- Code (load this into the tool for clickable Obramat links) ---\n\n" + encode(rep);
   return body;
 }
 async function submitToRory(btn){
@@ -590,7 +716,7 @@ async function submitToRory(btn){
   try{
     const fd = new FormData();
     fd.append("access_key", WEB3FORMS_KEY);
-    fd.append("subject", "Respuesta de Lorant - lista de compra y precio");
+    fd.append("subject", "Lorant's reply - shopping list and price");
     fd.append("from_name", "Lorant");
     fd.append("message", buildReplyText(rep));
     const res = await fetch("https://api.web3forms.com/submit", {method:"POST", body:fd});
@@ -603,16 +729,179 @@ async function submitToRory(btn){
 function emailToRory(e){
   e.preventDefault();
   const body = buildReplyText(packReply());
-  window.location.href = `mailto:${OWNER_EMAIL}?subject=${encodeURIComponent("Respuesta de Lorant - lista de compra y precio")}&body=${encodeURIComponent(body)}`;
+  window.location.href = `mailto:${OWNER_EMAIL}?subject=${encodeURIComponent("Lorant's reply - shopping list and price")}&body=${encodeURIComponent(body)}`;
+}
+
+/* ================= LORANT: RORY'S DECISION ================= */
+let decisionPayload = null;   // the decision Rory sent
+let decResp = {};             // { [jobId]: {choice:'accept'|'counter', price} }
+function initDecision(data){
+  if(!data || data.type!=="decision"){ toast("No es una respuesta válida"); return; }
+  decisionPayload = data;
+  try{ const s=lsGet("lorant_decresp_"+jobsKey(data)); decResp = s?JSON.parse(s):{}; }catch(e){ decResp={}; }
+  $("ownerView").classList.add("hidden");
+  $("lorantView").classList.add("hidden");
+  $("lorantDecisionView").classList.remove("hidden");
+  $("mOwner").classList.remove("active"); $("mLorant").classList.add("active");
+  renderDecisionJobs();
+  toast("Respuesta cargada");
+}
+function renderDecisionJobs(){
+  const wrap = $("decisionJobs"); wrap.innerHTML = "";
+  const ordered = [...decisionPayload.jobs].sort((a,b)=>a.priority-b.priority);
+  ordered.forEach(j=>{
+    const dec = decisionPayload.decisions[j.id] || {status:"none"};
+    const orig = (decisionPayload.data[j.id]||{}).price;
+    const r = decResp[j.id] || {};
+    let inner = "";
+    if(dec.status==="approved"){
+      inner = `<div class="statusline s-approved">✅ Rory acepta este trabajo a €${esc(orig)}</div>`;
+    } else if(dec.status==="declined"){
+      inner = `<div class="statusline s-declined">❌ Rory no necesita este trabajo por ahora</div>`;
+    } else if(dec.status==="counter"){
+      inner = `
+        <div class="statusline s-counter">💬 Rory te ofrece €${esc(dec.counter)} (tu precio era €${esc(orig)})</div>
+        ${dec.note?`<p class="hint">📝 ${esc(dec.note)}</p>`:""}
+        <div class="row" style="margin-top:8px">
+          <button class="btn good sm" id="dr_${j.id}_accept" onclick="setDecResp('${j.id}','accept')">✅ Aceptar €${esc(dec.counter)}</button>
+          <button class="btn ghost sm" id="dr_${j.id}_counter" onclick="setDecResp('${j.id}','counter')">💬 Proponer otro precio</button>
+        </div>
+        <div id="drcounter_${j.id}" class="hidden" style="margin-top:8px">
+          <div class="field" style="margin:0;max-width:160px">
+            <label>Tu nuevo precio (€)</label>
+            <input type="number" min="0" value="${esc(r.price)}" oninput="setDecRespPrice('${j.id}',this.value)" placeholder="€">
+          </div>
+        </div>
+        <div class="statusline" id="drstatus_${j.id}"></div>`;
+    } else {
+      inner = `<div class="statusline">Sin decisión</div>`;
+    }
+    const card = document.createElement("div");
+    card.className="card";
+    card.innerHTML = `
+      <div class="jobhead">
+        <div class="jobnum">${j.n}</div>
+        <strong>${esc(j.title)||"Trabajo "+j.n}</strong>
+        <span class="pill p${j.priority}">${PRIORITY_ES[j.priority]||"Prioridad "+j.priority}</span>
+      </div>
+      ${inner}
+    `;
+    wrap.appendChild(card);
+    if(dec.status==="counter") applyDecRespUI(j.id);
+  });
+  $("decNotes").value = decResp._notes||"";
+}
+function setDecResp(jobId, choice){ decResp[jobId]=decResp[jobId]||{}; decResp[jobId].choice=choice; applyDecRespUI(jobId); saveDecisionResp(); }
+function setDecRespPrice(jobId, val){ decResp[jobId]=decResp[jobId]||{}; decResp[jobId].price=val; decResp[jobId].choice="counter"; saveDecisionResp(); }
+function applyDecRespUI(jobId){
+  const r = decResp[jobId]||{};
+  const a=$("dr_"+jobId+"_accept"), c=$("dr_"+jobId+"_counter");
+  if(a) a.classList.toggle("sel", r.choice==="accept");
+  if(c) c.classList.toggle("sel", r.choice==="counter");
+  const cb=$("drcounter_"+jobId); if(cb) cb.classList.toggle("hidden", r.choice!=="counter");
+  const sl=$("drstatus_"+jobId); if(sl){
+    if(r.choice==="accept"){ sl.className="statusline s-approved"; sl.textContent="✅ Aceptas el precio de Rory"; }
+    else if(r.choice==="counter"){ sl.className="statusline s-counter"; sl.textContent="💬 Tu propuesta: €"+(r.price||"?"); }
+    else { sl.textContent=""; }
+  }
+}
+function saveDecisionResp(){
+  decResp._notes = $("decNotes")?.value||"";
+  if(decisionPayload) lsSet("lorant_decresp_"+jobsKey(decisionPayload), JSON.stringify(decResp));
+}
+function packDecisionResp(){
+  saveDecisionResp();
+  return {
+    v:1, type:"decision-response", from:"Lorant", created:new Date().toISOString(),
+    jobs: decisionPayload.jobs,
+    decisions: decisionPayload.decisions,
+    data: decisionPayload.data,
+    resp: decResp,
+    notes: decResp._notes||""
+  };
+}
+function buildDecRespText(p){
+  let body = "Lorant's answer to your decision:\n\n";
+  [...p.jobs].sort((a,b)=>a.priority-b.priority).forEach(j=>{
+    const dec=p.decisions[j.id]||{}; const r=p.resp[j.id]||{}; const orig=(p.data[j.id]||{}).price;
+    body += `JOB ${j.n}: ${j.title}\n`;
+    if(dec.status==="approved") body += `  AGREED at €${orig} (you approved, Lorant confirms)\n`;
+    else if(dec.status==="declined") body += `  Declined by you, nothing to do\n`;
+    else if(dec.status==="counter"){
+      if(r.choice==="accept") body += `  AGREED at €${dec.counter} (Lorant accepted your offer)\n`;
+      else if(r.choice==="counter") body += `  Lorant counters back: €${r.price} (you offered €${dec.counter}, his original €${orig})\n`;
+      else body += `  Awaiting Lorant on your €${dec.counter} offer\n`;
+    }
+    body += "\n";
+  });
+  if(p.notes) body += `Notes from Lorant: ${p.notes}\n`;
+  body += "\n--- Code (load this into the tool) ---\n\n" + encode(p);
+  return body;
+}
+async function submitDecisionResp(btn){
+  if(!WEB3FORMS_KEY){ toast("El envío automático aún no está configurado"); return; }
+  const p = packDecisionResp();
+  const original = btn ? btn.textContent : "";
+  if(btn){ btn.disabled=true; btn.textContent="Enviando..."; }
+  try{
+    const fd=new FormData();
+    fd.append("access_key", WEB3FORMS_KEY);
+    fd.append("subject", "Lorant's answer to your decision");
+    fd.append("from_name", "Lorant");
+    fd.append("message", buildDecRespText(p));
+    const res=await fetch("https://api.web3forms.com/submit",{method:"POST",body:fd});
+    const j=await res.json();
+    toast(j.success?"Enviado a Rory ✅":"No se pudo enviar, usa email o código");
+  }catch(e){ toast("Sin conexión, usa email o código"); }
+  finally{ if(btn){ btn.disabled=false; btn.textContent=original; } }
+}
+function generateDecRespCode(){ $("decRespCodeOut").value = encode(packDecisionResp()); $("decRespCodeWrap").classList.remove("hidden"); toast("Código listo"); }
+function emailDecisionResp(e){
+  e.preventDefault();
+  const body = buildDecRespText(packDecisionResp());
+  window.location.href = `mailto:${OWNER_EMAIL}?subject=${encodeURIComponent("Lorant's answer to your decision")}&body=${encodeURIComponent(body)}`;
+}
+
+/* ---- owner: view Lorant's answer to a decision ---- */
+function renderDecisionResponse(p){
+  const v = $("replyView"); v.innerHTML = "";
+  const ordered = [...p.jobs].sort((a,b)=>a.priority-b.priority);
+  let agreed = 0;
+  ordered.forEach(j=>{
+    const dec=p.decisions[j.id]||{}; const r=p.resp[j.id]||{}; const orig=(p.data[j.id]||{}).price;
+    let line="", cls="statusline";
+    if(dec.status==="approved"){ cls+=" s-approved"; line=`✅ Agreed at €${esc(orig)}`; }
+    else if(dec.status==="declined"){ cls+=" s-declined"; line="❌ Declined"; }
+    else if(dec.status==="counter"){
+      if(r.choice==="accept"){ cls+=" s-approved"; line=`✅ Lorant accepted your €${esc(dec.counter)}`; }
+      else if(r.choice==="counter"){ cls+=" s-counter"; line=`💬 Lorant counters back: €${esc(r.price)} (you offered €${esc(dec.counter)})`; }
+      else { cls+=" s-counter"; line=`⏳ Waiting on your €${esc(dec.counter)} offer`; }
+    }
+    const card=document.createElement("div"); card.className="card";
+    card.innerHTML=`<div class="jobhead"><div class="jobnum">${j.n}</div><strong>${esc(j.title)||"Job "+j.n}</strong>
+      <span class="pill p${j.priority}">${PRIORITY_LABELS[j.priority]||"Priority "+j.priority}</span></div>
+      <div class="${cls}">${line}</div>`;
+    // if Lorant countered back, let owner re-decide via a fresh counter on this round
+    if(dec.status==="counter" && r.choice==="counter"){
+      card.innerHTML += `<p class="hint">To respond again, reload his original quote and send a new decision, or agree by replying to him directly.</p>`;
+    }
+    v.appendChild(card);
+  });
+  const sum=document.createElement("div"); sum.className="card"; sum.style.borderColor="var(--accent)";
+  sum.innerHTML = `<h2 style="margin-top:0">Negotiation status</h2>${p.notes?`<p class="hint">📝 From Lorant: ${esc(p.notes)}</p>`:""}`;
+  v.appendChild(sum);
+  toast("Lorant's answer loaded");
+  if(v.scrollIntoView) v.scrollIntoView({behavior:"smooth"});
 }
 
 /* ---------- boot ---------- */
 loadOwner();
-// auto-load jobs from URL hash if present (#jobs=CODE)
+// auto-load from URL hash if present (#jobs=CODE or #decision=CODE)
 (function(){
   const h = location.hash;
-  if(h.startsWith("#jobs=")){ try{ setMode("lorant"); initLorant(decode(h.slice(6))); }catch(e){} }
-  else { setMode(lsGet("lorant_mode")||"owner"); }
+  if(h.startsWith("#jobs=")){ try{ setMode("lorant"); initLorant(decode(h.slice(6))); return; }catch(e){} }
+  if(h.startsWith("#decision=")){ try{ initDecision(decode(h.slice(10))); return; }catch(e){} }
+  setMode(lsGet("lorant_mode")||"owner");
 })();
 </script>
 </body>
