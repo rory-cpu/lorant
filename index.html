@@ -181,10 +181,13 @@
     </div>
 
     <h2>Enviar respuesta a Rory</h2>
-    <div class="row" style="margin-top:6px">
-      <button class="btn primary" onclick="downloadReplyFile()">⬇️ Descargar respuesta</button>
-      <button class="btn blue" onclick="generateReplyCode()">🔑 Generar código</button>
-      <a class="btn good" id="emailRory" href="#" onclick="emailToRory(event)">✉️ Email a Rory</a>
+    <button class="btn primary full" onclick="submitToRory(this)">📨 Enviar a Rory</button>
+    <p class="hint">Rory recibirá tu lista de compra y precio por email al instante.</p>
+    <p class="hint">¿Sin conexión? Usa una de estas opciones:</p>
+    <div class="row" style="margin-top:4px">
+      <button class="btn ghost" onclick="downloadReplyFile()">⬇️ Descargar</button>
+      <button class="btn ghost" onclick="generateReplyCode()">🔑 Código</button>
+      <a class="btn ghost" id="emailRory" href="#" onclick="emailToRory(event)">✉️ Email</a>
     </div>
     <div id="replyCodeWrap" class="field hidden" style="margin-top:14px">
       <label>Código para Rory (cópialo y envíaselo)</label>
@@ -201,6 +204,9 @@
 /* ---------- config ---------- */
 const OWNER_EMAIL  = "nolanrory75@gmail.com";
 const LORANT_EMAIL = "Lorantbenda2@gmail.com";
+// Paste your free Web3Forms access key here (get it at https://web3forms.com, confirm your email once).
+// It is safe to expose in the page. Submissions are emailed to the address tied to this key.
+const WEB3FORMS_KEY = "";
 const PRIORITY_LABELS = {1:"Top priority",2:"2nd",3:"3rd",4:"4th",5:"5th",6:"Low"};
 const PRIORITY_ES = {1:"Máxima prioridad",2:"2ª",3:"3ª",4:"4ª",5:"5ª",6:"Baja"};
 
@@ -560,11 +566,9 @@ function packReply(){
 }
 function generateReplyCode(){ $("replyCodeOut").value = encode(packReply()); $("replyCodeWrap").classList.remove("hidden"); toast("Código listo"); }
 function downloadReplyFile(){ download("respuesta-lorant.json", packReply()); toast("Archivo descargado"); }
-function emailToRory(e){
-  e.preventDefault();
-  const rep = packReply();
+function buildReplyText(rep){
   let body = "Lista de compra y precios:\n\n";
-  rep.jobs.sort((a,b)=>a.priority-b.priority).forEach(j=>{
+  [...rep.jobs].sort((a,b)=>a.priority-b.priority).forEach(j=>{
     const d = rep.data[j.id]||{};
     body += `TRABAJO ${j.n}: ${j.title}\n`;
     (d.materials||[]).forEach(m=>{ if(m.name||m.url) body += `  ${m.qty||1} x ${m.name} | Ref ${m.ref||"-"} | ${m.url||""}\n`; });
@@ -572,9 +576,33 @@ function emailToRory(e){
     if(d.time) body += `  Tiempo: ${d.time}\n`;
     body += "\n";
   });
-  if(rep.all.price) body += `PRECIO TOTAL POR TODOS LOS TRABAJOS: €${rep.all.price}\n`;
-  if(rep.all.time) body += `Tiempo total: ${rep.all.time}\n`;
+  if(rep.all && rep.all.price) body += `PRECIO TOTAL POR TODOS LOS TRABAJOS: €${rep.all.price}\n`;
+  if(rep.all && rep.all.time) body += `Tiempo total: ${rep.all.time}\n`;
+  if(rep.notes) body += `Notas: ${rep.notes}\n`;
   body += "\n--- Código (cárgalo en la herramienta) ---\n\n" + encode(rep);
+  return body;
+}
+async function submitToRory(btn){
+  if(!WEB3FORMS_KEY){ toast("El envío automático aún no está configurado"); return; }
+  const rep = packReply();
+  const original = btn ? btn.textContent : "";
+  if(btn){ btn.disabled = true; btn.textContent = "Enviando..."; }
+  try{
+    const fd = new FormData();
+    fd.append("access_key", WEB3FORMS_KEY);
+    fd.append("subject", "Respuesta de Lorant - lista de compra y precio");
+    fd.append("from_name", "Lorant");
+    fd.append("message", buildReplyText(rep));
+    const res = await fetch("https://api.web3forms.com/submit", {method:"POST", body:fd});
+    const j = await res.json();
+    if(j.success){ toast("Enviado a Rory ✅"); }
+    else { toast("No se pudo enviar, usa email o código"); }
+  }catch(e){ toast("Sin conexión, usa email o código"); }
+  finally{ if(btn){ btn.disabled = false; btn.textContent = original; } }
+}
+function emailToRory(e){
+  e.preventDefault();
+  const body = buildReplyText(packReply());
   window.location.href = `mailto:${OWNER_EMAIL}?subject=${encodeURIComponent("Respuesta de Lorant - lista de compra y precio")}&body=${encodeURIComponent(body)}`;
 }
 
