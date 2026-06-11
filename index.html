@@ -456,6 +456,7 @@ function renderReply(data){
       <div class="totbar"><span>Lorant's labor (fixed cash)</span><span>${price?fmt(price):"-"}</span></div>
       <div class="totbar" style="border-color:var(--accent)"><span><strong>Budget for this job</strong></span><span class="big">${fmt(sub+price)}</span></div>
       ${d.time?`<p class="hint">⏱ Estimated time: <strong>${esc(d.time)}</strong></p>`:""}
+      ${d.startDate?`<p class="hint">📅 Approx. start date: <strong>${esc(d.startDate)}</strong></p>`:""}
       ${d.notes?`<p class="hint">📝 ${esc(d.notes)}</p>`:""}
       <div class="decbox">
         <label>Your decision</label>
@@ -643,6 +644,10 @@ function renderLorantJobs(){
       </div>
       <div class="totbar" style="border-color:var(--good);margin-top:10px"><span>Total estimado (materiales + tu trabajo)</span><span class="big" id="budget_${j.id}" style="color:var(--good)">€0</span></div>
       <div class="field" style="margin-top:10px">
+        <label>Fecha de inicio aproximada (si acepto el trabajo)</label>
+        <input type="text" value="${esc(d.startDate)}" oninput="setJobField('${j.id}','startDate',this.value)" placeholder="ej. la semana que viene, 15 de junio">
+      </div>
+      <div class="field" style="margin-top:10px">
         <label>Notas del trabajo (opcional)</label>
         <input type="text" value="${esc(d.notes)}" oninput="setJobField('${j.id}','notes',this.value)" placeholder="...">
       </div>
@@ -737,6 +742,7 @@ function buildReplyText(rep){
     if(d.price) body += `  Labor (fixed cash): €${d.price}\n`;
     body += `  Budget for this job: ${fmt(sub+labor)}\n`;
     if(d.time) body += `  Estimated time: ${d.time}\n`;
+    if(d.startDate) body += `  Approx. start date: ${d.startDate}\n`;
     body += "\n";
   });
   body += `TOTALS: materials ${fmt(totMats)} + labor ${fmt(totLabor)} = ${fmt(totMats+totLabor)}\n`;
