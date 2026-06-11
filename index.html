@@ -280,7 +280,7 @@ function setMode(m){
 }
 
 /* ================= OWNER ================= */
-function newJob(){return {id:uid(), title:"", desc:"", descEs:"", priority:1, photos:[]};}
+function newJob(){return {id:uid(), title:"", titleEs:"", desc:"", descEs:"", priority:1, photos:[]};}
 
 function syncJobCount(){
   const n = Math.max(1, parseInt($("jobCount").value)||1);
@@ -337,6 +337,10 @@ function renderJobsEditor(){
         <input value="${esc(j.title)}" oninput="updJob('${j.id}','title',this.value)" placeholder="e.g. Repair garden wall">
       </div>
       <div class="field">
+        <label>Job title in Spanish (shown to Lorant) <span class="muted">(ask Claude to translate, or type it)</span></label>
+        <input value="${esc(j.titleEs)}" oninput="updJob('${j.id}','titleEs',this.value)" placeholder="ej. Reparar el muro del jardín">
+      </div>
+      <div class="field">
         <label>Description (English) - what you want done</label>
         <textarea oninput="updJob('${j.id}','desc',this.value)" placeholder="Describe the job...">${esc(j.desc)}</textarea>
       </div>
@@ -367,7 +371,7 @@ function packJobs(){
   return {
     v:1, type:"jobs", from:"Rory", created:new Date().toISOString(),
     count: jobs.length,
-    jobs: jobs.map((j,i)=>({id:j.id, n:i+1, title:j.title, desc:j.desc, descEs:j.descEs, priority:j.priority, photos:j.photos}))
+    jobs: jobs.map((j,i)=>({id:j.id, n:i+1, title:j.title, titleEs:j.titleEs, desc:j.desc, descEs:j.descEs, priority:j.priority, photos:j.photos}))
   };
 }
 function generateJobsCode(){
@@ -621,7 +625,7 @@ function renderLorantJobs(){
     card.innerHTML = `
       <div class="jobhead">
         <div class="jobnum">${j.n}</div>
-        <strong>${esc(j.title)||"Trabajo "+j.n}</strong>
+        <strong>${esc(j.titleEs||j.title)||"Trabajo "+j.n}</strong>
         <span class="pill p${j.priority}">${PRIORITY_ES[j.priority]||"Prioridad "+j.priority}</span>
       </div>
       <p style="white-space:pre-wrap;margin:.2em 0 .6em">${esc(j.descEs||j.desc)}</p>
@@ -721,7 +725,7 @@ function packReply(){
   saveLorant();
   return {
     v:1, type:"reply", from:"Lorant", created:new Date().toISOString(),
-    jobs: loadedJobs.jobs.map(j=>({id:j.id,n:j.n,title:j.title,priority:j.priority})),
+    jobs: loadedJobs.jobs.map(j=>({id:j.id,n:j.n,title:j.title,titleEs:j.titleEs,priority:j.priority})),
     data: Object.fromEntries(loadedJobs.jobs.map(j=>[j.id, lorantData[j.id]||{}])),
     all: lorantData._all||{},
     notes: lorantData._notes||""
@@ -825,7 +829,7 @@ function renderDecisionJobs(){
     card.innerHTML = `
       <div class="jobhead">
         <div class="jobnum">${j.n}</div>
-        <strong>${esc(j.title)||"Trabajo "+j.n}</strong>
+        <strong>${esc(j.titleEs||j.title)||"Trabajo "+j.n}</strong>
         <span class="pill p${j.priority}">${PRIORITY_ES[j.priority]||"Prioridad "+j.priority}</span>
       </div>
       ${inner}
