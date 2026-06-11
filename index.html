@@ -429,11 +429,12 @@ function renderReply(data){
   try{ const s=lsGet("lorant_decisions_"+(data.jobs||[]).map(j=>j.id).join("_")); decisions = s?JSON.parse(s):{}; }catch(e){ decisions={}; }
   const v = $("replyView"); v.innerHTML = "";
   const ordered = [...data.jobs].sort((a,b)=>a.priority-b.priority);
-  let grand = 0;
+  let grandLabor = 0, grandMats = 0;
   ordered.forEach(j=>{
     const d = data.data[j.id] || {};
     const mats = d.materials || [];
-    const price = parseFloat(d.price)||0; grand += price;
+    const price = parseFloat(d.price)||0; grandLabor += price;
+    const sub = matsSubtotal(d); grandMats += sub;
     const card = document.createElement("div");
     card.className="card";
     card.innerHTML = `
@@ -442,14 +443,18 @@ function renderReply(data){
         <strong>${esc(j.title)||"Job "+j.n}</strong>
         <span class="pill p${j.priority}">${PRIORITY_LABELS[j.priority]||"Priority "+j.priority}</span>
       </div>
-      ${mats.length?`<table><thead><tr><th>Qty</th><th>Material</th><th>Ref</th><th>Link</th></tr></thead>
-        <tbody>${mats.map(m=>`<tr>
+      ${mats.length?`<table><thead><tr><th>Qty</th><th>Material</th><th>Ref</th><th>Unit €</th><th>Line €</th><th>Link</th></tr></thead>
+        <tbody>${mats.map(m=>{const q=parseFloat(m.qty)||0,p=parseFloat(m.price)||0;return `<tr>
           <td class="qty">${esc(m.qty)||1}×</td>
           <td>${esc(m.name)}</td>
           <td>${esc(m.ref)||"-"}</td>
+          <td>${p?fmt(p):"-"}</td>
+          <td>${(q&&p)?fmt(q*p):"-"}</td>
           <td>${m.url?`<a class="btn blue sm" href="${esc(m.url)}" target="_blank">Obramat ↗</a>`:"-"}</td>
-        </tr>`).join("")}</tbody></table>`:`<p class="muted">No materials listed.</p>`}
-      <div class="totbar"><span>Fixed cash price</span><span class="big">${price?("€"+price):"-"}</span></div>
+        </tr>`;}).join("")}</tbody></table>`:`<p class="muted">No materials listed.</p>`}
+      <div class="totbar"><span>Materials (est.)</span><span>${fmt(sub)}</span></div>
+      <div class="totbar"><span>Lorant's labor (fixed cash)</span><span>${price?fmt(price):"-"}</span></div>
+      <div class="totbar" style="border-color:var(--accent)"><span><strong>Budget for this job</strong></span><span class="big">${fmt(sub+price)}</span></div>
       ${d.time?`<p class="hint">⏱ Estimated time: <strong>${esc(d.time)}</strong></p>`:""}
       ${d.notes?`<p class="hint">📝 ${esc(d.notes)}</p>`:""}
       <div class="decbox">
@@ -480,9 +485,12 @@ function renderReply(data){
   summary.className="card";
   summary.style.borderColor = "var(--accent)";
   summary.innerHTML = `
-    <h2 style="margin-top:0">Summary</h2>
-    <div class="totbar"><span>Sum of individual job prices</span><span class="big">€${grand}</span></div>
-    ${all.price?`<div class="totbar" style="border-color:var(--good)"><span>All-inclusive price (all jobs)</span><span class="big" style="color:var(--good)">€${esc(all.price)}</span></div>`:""}
+    <h2 style="margin-top:0">Budget summary</h2>
+    <div class="totbar"><span>All materials (est.)</span><span>${fmt(grandMats)}</span></div>
+    <div class="totbar"><span>All labor (sum of job prices)</span><span>${fmt(grandLabor)}</span></div>
+    <div class="totbar" style="border-color:var(--accent)"><span><strong>Total budget (materials + labor)</strong></span><span class="big">${fmt(grandMats+grandLabor)}</span></div>
+    ${all.price?`<div class="totbar" style="border-color:var(--good)"><span>Labor if all jobs done together</span><span class="big" style="color:var(--good)">€${esc(all.price)}</span></div>`:""}
+    ${all.price?`<p class="hint">With the all-inclusive labor price, total budget would be ${fmt(grandMats + (parseFloat(all.price)||0))} (materials + ${fmt(parseFloat(all.price)||0)} labor).</p>`:""}
     ${all.time?`<p class="hint">⏱ Total time for all jobs: <strong>${esc(all.time)}</strong></p>`:""}
     ${data.notes?`<p class="hint">📝 From Lorant: ${esc(data.notes)}</p>`:""}
     <button class="btn blue full" style="margin-top:10px" onclick="openAllLinks()">🛒 Open all Obramat links</button>
@@ -605,7 +613,7 @@ function renderLorantJobs(){
   const wrap = $("lorantJobs"); wrap.innerHTML = "";
   const ordered = [...loadedJobs.jobs].sort((a,b)=>a.priority-b.priority);
   ordered.forEach(j=>{
-    if(!lorantData[j.id]) lorantData[j.id] = {materials:[{name:"",url:"",ref:"",qty:1}], price:"", time:"", notes:""};
+    if(!lorantData[j.id]) lorantData[j.id] = {materials:[{name:"",url:"",ref:"",qty:1,price:""}], price:"", time:"", notes:""};
     const d = lorantData[j.id];
     const card = document.createElement("div");
     card.className="card";
@@ -619,18 +627,21 @@ function renderLorantJobs(){
       ${j.photos&&j.photos.length?`<div class="thumbs">${j.photos.map(p=>`<a href="${p}" target="_blank"><img src="${p}"></a>`).join("")}</div>`:""}
       <div class="divider"></div>
       <label>Materiales de Obramat</label>
+      <p class="hint">La <strong>cantidad</strong> es el número de paquetes o unidades que hay que comprar, no metros cuadrados. Pon el <strong>precio por paquete/unidad</strong> que ves en la página de Obramat.</p>
       <div id="mats_${j.id}"></div>
       <button class="btn ghost sm" onclick="addMat('${j.id}')">+ Añadir material</button>
+      <div class="totbar" style="margin-top:12px"><span>Materiales (aprox.)</span><span id="matsub_${j.id}">€0</span></div>
       <div class="row" style="margin-top:14px">
         <div class="field" style="margin:0">
-          <label>Precio fijo en efectivo (€)</label>
-          <input type="number" min="0" value="${esc(d.price)}" oninput="setJobField('${j.id}','price',this.value)" placeholder="€">
+          <label>Precio fijo en efectivo por tu trabajo (€)</label>
+          <input type="number" min="0" value="${esc(d.price)}" oninput="setJobField('${j.id}','price',this.value)" placeholder="€ mano de obra">
         </div>
         <div class="field" style="margin:0">
           <label>Tiempo estimado</label>
           <input type="text" value="${esc(d.time)}" oninput="setJobField('${j.id}','time',this.value)" placeholder="ej. 2 horas, 1 día">
         </div>
       </div>
+      <div class="totbar" style="border-color:var(--good);margin-top:10px"><span>Total estimado (materiales + tu trabajo)</span><span class="big" id="budget_${j.id}" style="color:var(--good)">€0</span></div>
       <div class="field" style="margin-top:10px">
         <label>Notas del trabajo (opcional)</label>
         <input type="text" value="${esc(d.notes)}" oninput="setJobField('${j.id}','notes',this.value)" placeholder="...">
@@ -638,6 +649,7 @@ function renderLorantJobs(){
     `;
     wrap.appendChild(card);
     renderMats(j.id);
+    updateJobTotals(j.id);
   });
 }
 function renderMats(jobId){
@@ -655,25 +667,45 @@ function renderMats(jobId){
         <div class="ref" id="ref_${jobId}_${idx}">${m.ref?("Ref: "+m.ref):""}</div>
       </div>
       <div class="row" style="align-items:end">
-        <div class="field" style="margin:0;max-width:110px">
-          <label>Cantidad</label>
+        <div class="field" style="margin:0;max-width:130px">
+          <label>Cantidad (paquetes)</label>
           <input type="number" min="1" value="${esc(m.qty)||1}" oninput="setMat('${jobId}',${idx},'qty',this.value)">
+        </div>
+        <div class="field" style="margin:0;max-width:140px">
+          <label>Precio por paquete (€)</label>
+          <input type="number" min="0" step="0.01" value="${esc(m.price)}" oninput="setMat('${jobId}',${idx},'price',this.value)" placeholder="€">
         </div>
         <div style="flex:0 0 auto">
           <button class="btn danger sm" onclick="delMat('${jobId}',${idx})">Quitar</button>
         </div>
       </div>
+      <div class="hint" id="lt_${jobId}_${idx}" style="margin-top:6px"></div>
     </div>
   `).join("");
 }
-function addMat(jobId){ lorantData[jobId].materials.push({name:"",url:"",ref:"",qty:1}); renderMats(jobId); saveLorant(); }
-function delMat(jobId, idx){ lorantData[jobId].materials.splice(idx,1); if(!lorantData[jobId].materials.length) lorantData[jobId].materials.push({name:"",url:"",ref:"",qty:1}); renderMats(jobId); saveLorant(); }
+function addMat(jobId){ lorantData[jobId].materials.push({name:"",url:"",ref:"",qty:1,price:""}); renderMats(jobId); updateJobTotals(jobId); saveLorant(); }
+function delMat(jobId, idx){ lorantData[jobId].materials.splice(idx,1); if(!lorantData[jobId].materials.length) lorantData[jobId].materials.push({name:"",url:"",ref:"",qty:1,price:""}); renderMats(jobId); updateJobTotals(jobId); saveLorant(); }
 function setMat(jobId, idx, key, val){
   const m = lorantData[jobId].materials[idx]; m[key]=val;
   if(key==="url"){ m.ref = refFromUrl(val); const r=$("ref_"+jobId+"_"+idx); if(r) r.textContent = m.ref?("Ref: "+m.ref):""; }
+  if(key==="qty"||key==="price") updateJobTotals(jobId);
   saveLorant();
 }
-function setJobField(jobId, key, val){ lorantData[jobId][key]=val; saveLorant(); }
+function setJobField(jobId, key, val){ lorantData[jobId][key]=val; if(key==="price") updateJobTotals(jobId); saveLorant(); }
+function matsSubtotal(d){ return (d.materials||[]).reduce((s,m)=>s + (parseFloat(m.qty)||0)*(parseFloat(m.price)||0), 0); }
+function fmt(n){ return "€" + (Math.round(n*100)/100).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function updateJobTotals(jobId){
+  const d = lorantData[jobId]; if(!d) return;
+  (d.materials||[]).forEach((m,idx)=>{
+    const lt = $("lt_"+jobId+"_"+idx); if(!lt) return;
+    const q=parseFloat(m.qty)||0, p=parseFloat(m.price)||0;
+    lt.textContent = (q&&p) ? `${q} x ${fmt(p)} = ${fmt(q*p)}` : "";
+  });
+  const sub = matsSubtotal(d);
+  const labor = parseFloat(d.price)||0;
+  const ms = $("matsub_"+jobId); if(ms) ms.textContent = fmt(sub);
+  const bg = $("budget_"+jobId); if(bg) bg.textContent = fmt(sub+labor);
+}
 
 function saveLorant(){
   lorantData._all = {price:$("allInPrice")?.value||"", time:$("allInTime")?.value||""};
@@ -693,16 +725,22 @@ function packReply(){
 function generateReplyCode(){ $("replyCodeOut").value = encode(packReply()); $("replyCodeWrap").classList.remove("hidden"); toast("Código listo"); }
 function downloadReplyFile(){ download("respuesta-lorant.json", packReply()); toast("Archivo descargado"); }
 function buildReplyText(rep){
-  let body = "Shopping list and prices from Lorant:\n\n";
+  let body = "Shopping list, prices and budget from Lorant:\n\n";
+  let totMats=0, totLabor=0;
   [...rep.jobs].sort((a,b)=>a.priority-b.priority).forEach(j=>{
     const d = rep.data[j.id]||{};
+    const sub = matsSubtotal(d); const labor = parseFloat(d.price)||0;
+    totMats += sub; totLabor += labor;
     body += `JOB ${j.n}: ${j.title}\n`;
-    (d.materials||[]).forEach(m=>{ if(m.name||m.url) body += `  ${m.qty||1} x ${m.name} | Ref ${m.ref||"-"} | ${m.url||""}\n`; });
-    if(d.price) body += `  Fixed price: €${d.price}\n`;
+    (d.materials||[]).forEach(m=>{ if(m.name||m.url){ const q=parseFloat(m.qty)||0,p=parseFloat(m.price)||0; body += `  ${m.qty||1} x ${m.name} | Ref ${m.ref||"-"}${p?` | ${fmt(p)}/unit = ${fmt(q*p)}`:""} | ${m.url||""}\n`; } });
+    body += `  Materials (est.): ${fmt(sub)}\n`;
+    if(d.price) body += `  Labor (fixed cash): €${d.price}\n`;
+    body += `  Budget for this job: ${fmt(sub+labor)}\n`;
     if(d.time) body += `  Estimated time: ${d.time}\n`;
     body += "\n";
   });
-  if(rep.all && rep.all.price) body += `ALL-INCLUSIVE PRICE FOR ALL JOBS: €${rep.all.price}\n`;
+  body += `TOTALS: materials ${fmt(totMats)} + labor ${fmt(totLabor)} = ${fmt(totMats+totLabor)}\n`;
+  if(rep.all && rep.all.price) body += `ALL-INCLUSIVE LABOR FOR ALL JOBS: €${rep.all.price} (total with materials ${fmt(totMats + (parseFloat(rep.all.price)||0))})\n`;
   if(rep.all && rep.all.time) body += `Total time for all jobs: ${rep.all.time}\n`;
   if(rep.notes) body += `Notes from Lorant: ${rep.notes}\n`;
   body += "\n--- Code (load this into the tool for clickable Obramat links) ---\n\n" + encode(rep);
